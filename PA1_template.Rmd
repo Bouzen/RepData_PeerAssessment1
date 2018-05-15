@@ -1,25 +1,74 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Fitness Tracker- Repro Week 2"
+output: html_document
 ---
+
+```{r setup, include=FALSE}
+library(lattice)
+```
 
 
 ## Loading and preprocessing the data
+```{r Load data, echo=TRUE}
+filelocation <- "C:/Users/Nate/Documents/Data Science Course/Reproducible/Week 2 Project/repdata%2Fdata%2Factivity (1)/Activity.csv"
+steps<-read.csv(filelocation,header=TRUE,sep=',' )
+steps$realdate<-as.Date(steps$date,"%Y-%m-%d")
 
-
+```
 
 ## What is mean total number of steps taken per day?
+```{r Number of steps on a daily basis, echo=TRUE}
+histdata<-aggregate(steps~date,steps,sum)
+dailymean<-mean(histdata$steps)
+print(paste('Daily mean =',dailymean))
+dailymedian<-median(histdata$steps)
+print(paste('Daily median =',dailymedian))
 
-
-
+```
 ## What is the average daily activity pattern?
+```{r daily graphs}
+hist(histdata$steps) ##hist of total steps per day
+plot(histdata$steps~as.Date(histdata$date,"%Y-%m-%d"), type='l') ##time series
+```
 
 
+```{r 5 minute interval portion, echo=TRUE}
+averagestepsperinterval<-aggregate(steps~interval,steps,mean)
 
+averagestepsperinterval[
+averagestepsperinterval$steps == max(averagestepsperinterval$steps),]
+
+
+```
 ## Imputing missing values
+```{r missing data, echo=TRUE}
 
+##Few dates at begining and end without data but maybe best not to extrapolate anyway. Project notes say using the mean daily value is fine.
+sum(is.na(steps$steps))
+avgperdaydata<-aggregate(steps~date,steps,mean)
+names(avgperdaydata) <-c('date','fillersteps')
+mergeddata<-merge(steps,avgperdaydata, by = 'date', all.x=TRUE)
+mergeddata$filledinsteps<-with(mergeddata,ifelse(is.na(steps),fillersteps,steps))
+
+```
+
+```{r filled in daily values, echo = TRUE}
+histdatamerged<-aggregate(filledinsteps~date,mergeddata,sum)
+hist(histdatamerged$filledinsteps)
+filledindailymean<-mean(histdatamerged$filledinsteps)
+filledindailymedian<-median(histdatamerged$filledinsteps)
+print(paste('Filled in daily mean=',filledindailymean))
+print(paste('Filled in daily median',filledindailymedian))
+filledindailymean - dailymean
+filledindailymedian - dailymedian
+##turns out I'm not filling in NAs because if an NA value exists the whole day is missing?
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r weekdays vs weekend, echo = TRUE}
+weekenddays<- c('Saturday','Sunday')
+mergeddata$weekendflag <- factor((weekdays(mergeddata$realdate) %in% weekenddays),levels = c(TRUE,FALSE), labels = c('weekend','weekday'))
+xyplot(mergeddata$steps~mergeddata$interval|mergeddata$weekendflag, layout =c(1,2),type = 'l',xlab='Interval', ylab = 'Number of steps')
+
+```
